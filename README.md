@@ -174,4 +174,121 @@ output "bucket_names" {
 }
 
 
+Variables
 
+variable "aws_region" {
+  default = "us-east-1"
+}
+
+variable "vpc_cidr" {
+  default = "10.0.0.0/16"
+}
+
+variable "subnet_cidrs" {
+  type    = list(string)
+  default = ["10.0.1.0/24", "10.0.2.0/24"]
+}
+
+
+
+(main)
+
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.5"
+    }
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+}
+
+
+module "vpc" {
+  source       = "./modulos/vpc"
+  vpc_cidr     = var.vpc_cidr
+  subnets_cidr = var.subnet_cidrs
+}
+
+
+module "ec2" {
+  source     = "./modulos/ec2"
+  subnet_ids = module.vpc.subnet_ids
+}
+
+
+module "nlb" {
+  source     = "./modulos/nlb"
+  subnet_ids = module.vpc.subnet_ids
+}
+
+module "s3" {
+  source        = "./modulos/s3"
+  random_suffix = local.rand_id
+}
+
+
+locals
+
+
+resource "random_string" "sufijo" {
+  length  = 6
+  special = false
+  upper   = false
+}
+
+locals {
+  rand_id     = random_string.sufijo.result
+  environment = "eval"
+}
+
+
+
+
+outputs
+
+
+output "resultado_vpc_id" {
+  value = module.vpc.vpc_id
+}
+
+output "resultado_subredes" {
+  value = module.vpc.subnet_ids
+}
+
+output "resultado_ec2" {
+  value = module.ec2.instance_ids
+}
+
+output "resultado_s3_buckets" {
+  value = module.s3.bucket_names
+}
+
+output "sufijo_generado" {
+  value = local.rand_id
+}
+
+
+
+# Inicializa el proyecto y descarga providers
+terraform init
+
+# Formatea el código para que quede ordenado y alineado
+terraform fmt -recursive
+
+# Valida que la sintaxis no tenga errores
+terraform validate
+
+# Genera el plan de ejecución
+terraform plan
+
+
+$env:TF_LOG="DEBUG"
+terraform plan
