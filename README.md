@@ -19,7 +19,6 @@ locals {
   nombre_vpc = "vpc-evaluacion"
 }
 
-# Creación de la VPC
 resource "aws_vpc" "this" {
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
@@ -29,7 +28,6 @@ resource "aws_vpc" "this" {
   }
 }
 
-# Creación repetitiva de Subredes con count
 resource "aws_subnet" "this" {
   count      = length(var.subnets_cidr)
   vpc_id     = aws_vpc.this.id
@@ -48,7 +46,6 @@ output "vpc_id" {
   value = aws_vpc.this.id
 }
 
-# Exporta la lista de IDs de las subredes para que las usen EC2 y NLB
 output "subnet_ids" {
   value = aws_subnet.this[*].id
 }
@@ -71,7 +68,6 @@ locals {
   tipo_instancia = "t2.micro"
 }
 
-# Imagen base (AMI) de Amazon Linux
 data "aws_ami" "amazon_linux" {
   most_recent = true
   owners      = ["amazon"]
@@ -82,7 +78,6 @@ data "aws_ami" "amazon_linux" {
   }
 }
 
-# Creación repetitiva de 2 servidores con count
 resource "aws_instance" "this" {
   count         = 2
   ami           = data.aws_ami.amazon_linux.id
@@ -115,11 +110,9 @@ variable "subnet_ids" {
 (main de la nbl)
 
 locals {
-  # Nombres únicos para usar con for_each
   nombres_nlb = toset(["nlb-principal", "nlb-secundario"])
 }
 
-# Creación repetitiva de 2 Network Load Balancers con for_each
 resource "aws_lb" "this" {
   for_each           = local.nombres_nlb
   name               = each.key
@@ -155,14 +148,14 @@ locals {
   prefijo = "bucket-privado"
 }
 
-# Creación repetitiva de 2 buckets S3 con count
+
 resource "aws_s3_bucket" "this" {
   count         = 2
   bucket        = "${local.prefijo}-${count.index + 1}-${var.random_suffix}"
   force_destroy = true
 }
 
-# Bloqueo de acceso público (Requerimiento de S3 privado)
+
 resource "aws_s3_bucket_public_access_block" "this" {
   count  = length(aws_s3_bucket.this)
   bucket = aws_s3_bucket.this[count.index].id
